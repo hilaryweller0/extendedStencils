@@ -1,0 +1,10 @@
+EXE_INC = \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(FOAM_USER_LIBSRC)/LEMOS-2.2.x/libLEMOS-2.2.x/finiteVolume/lnInclude \
+    -I$(FOAM_USER_LIBSRC)/cellToFaceExt/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude
+
+EXE_LIBS = \
+    -lfiniteVolume \
+    -L$(FOAM_USER_LIBBIN) -lLEMOS-2.2.x \
+    -L$(FOAM_USER_LIBBIN) -lcellToFaceExt

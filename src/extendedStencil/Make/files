@@ -1,0 +1,20 @@
+cellToFaceExt = fvMesh/extendedStencil/cellToFaceExt
+
+$(cellToFaceExt)/extendedCellToFaceExtStencil.C
+$(cellToFaceExt)/extendedCentredCellToFaceExtStencil.C
+/*$(cellToFaceExt)/extendedUpwindCellToFaceExtStencil.C*/
+
+globalIndexStencils = $(cellToFaceExt)/globalIndexStencils
+
+$(globalIndexStencils)/CPCCellToFaceExtStencil.C
+$(globalIndexStencils)/cellToFaceExtStencil.C
+
+MeshObjects = $(cellToFaceExt)/MeshObjects
+$(MeshObjects)/centredCPCCellToFaceExtStencilObject.C
+
+schemes = interpolation/surfaceInterpolation/schemes
+
+$(schemes)/quadraticCPCExtFit/quadraticCPCExtFit.C
+
+LIB = $(FOAM_USER_LIBBIN)/libextendedStencil
+

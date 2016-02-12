@@ -1,0 +1,13 @@
+EXE_INC = \
+    -ggdb3 -O0 -DFULLDEBUG \
+    -I$(LIB_USER_SRC)/extendedStencil/lnInclude \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude
+
+EXE_LIBS = \
+    -L$(FOAM_USER_LIBBIN) \
+    -lextendedStencil \
+    -lLEMOS-2.2.x \
+    -lfiniteVolume \
+    -lmeshTools
+
