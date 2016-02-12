@@ -83,6 +83,13 @@ int main(int argc, char *argv[])
       + mesh.Cf().component(vector::Y)
       + mesh.Cf().component(vector::Z)
     );
+    
+    // Access to the face value
+    const polyBoundaryMesh& bMesh = mesh.boundaryMesh();
+    const label patchID = bMesh.whichPatch(faceI);
+    scalar& psifFace = faceI < mesh.nInternalFaces() ?
+                psif[faceI] :
+                psif.boundaryField()[patchID][faceI - bMesh[patchID].start()];
 
     // Loop through all cells and work out if each cell is a member of the 
     // stencil
@@ -90,19 +97,18 @@ int main(int argc, char *argv[])
     {
         psi = 0;
         psi[cellI] = 1;
-        psif = 1;
         psif = fvc::interpolate(psi);
-        if (psif[faceI] != 0)
+        if (psifFace != 0)
         {
             stencil[cellI] = 1;
-            stencilWeights[cellI] = psif[faceI];
+            stencilWeights[cellI] = psifFace;
         }
     }
 
     stencil.write();
     stencilWeights.write();
     psif = 0;
-    psif[faceI] = 1;
+    psifFace = 1;
     psif.write();
 
     Info<< "\nEnd\n" << endl;
