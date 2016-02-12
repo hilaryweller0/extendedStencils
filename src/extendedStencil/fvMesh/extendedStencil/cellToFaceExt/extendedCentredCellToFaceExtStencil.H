@@ -141,8 +141,8 @@ public:
                 map(),
                 untransformedElements(),
                 transformedElements(),
-                fld(),
-                stencilFld(),
+                fld,
+                stencilFld,
                 mapDistribute::transformPosition()
             );
         }

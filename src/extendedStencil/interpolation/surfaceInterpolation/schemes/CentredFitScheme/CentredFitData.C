@@ -77,7 +77,7 @@ void Foam::CentredFitData<Polynomial>::calcFit()
     // Centred face stencils no good for triangles or tets.
     // Need bigger stencils
     List<List<point>> stencilPoints(mesh.nFaces());
-    this->stencil().collectData(mesh.C(), stencilPoints);
+    this->stencil().collectPositions(mesh.C(), stencilPoints);
 
     // find the fit coefficients for every face in the mesh
 
