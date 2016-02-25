@@ -33,36 +33,6 @@ License
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-// void Foam::cellToFaceExtStencil::merge
-// (
-//     const labelList& lst1,
-//     labelList& lst2
-// )
-// {
-//     label nAdd = 0;
-//     forAll(lst1, i)
-//     {
-//         if (findIndex(lst2, lst1[i]) == -1)
-//         {
-//             nAdd++;
-//         }
-//     }
-// 
-//     label sz = lst2.size();
-//     lst2.setSize(sz+nAdd);
-// 
-//     SubList<label> oldLst2(lst2, sz, 0);
-// 
-//     forAll(lst1, i)
-//     {
-//         if (findIndex(oldLst2, lst1[i]) == -1)
-//         {
-//             lst2[sz++] = lst1[i];
-//         }
-//     }
-// }
-
-
 void Foam::cellToFaceExtStencil::merge
 (
     const labelPairList& lst1,
@@ -211,204 +181,6 @@ Foam::labelPairList Foam::cellToFaceExtStencil::transform
 }
 
 
-// void Foam::cellToFaceExtStencil::transform
-// (
-//     const polyMesh& mesh,
-//     const label patchI,
-//     const labelPairList& trafoStencil,
-//     labelList& untransformed,
-//     labelPairList& transformed
-// )
-// {
-//     const globalIndexAndTransform& globalTransforms =
-//         mesh.globalData().globalTransforms();
-// 
-//     // Add the transformation to the neiStencil
-// 
-//     untransformed.setSize(trafoStencil.size());
-//     label untrafoI = 0;
-//     transformed.setSize(trafoStencil.size());
-//     label trafoI = 0;
-// 
-//     forAll(trafoStencil, i)
-//     {
-//         const labelPair& elem = trafoStencil[i];
-//         // Get components of neighbouring data
-//         label neiProc = globalIndexAndTransform::processor(elem);
-//         label neiIndex = globalIndexAndTransform::index(elem);
-//         label neiTransform = globalIndexAndTransform::transformIndex(elem);
-// 
-//         labelPair index = globalIndexAndTransform::encode
-//         (
-//             neiProc,
-//             neiIndex,
-//             globalTransforms.addToTransformIndex
-//             (
-//                 neiTransform,
-//                 patchI,
-//                 false   // patchI is the receiving patch
-//             )
-//         );
-// 
-//         if
-//         (
-//             globalIndexAndTransform::transformIndex(index)
-//          == globalTransforms.nullTransformIndex()
-//         )
-//         {
-//             untransformed[untrafoI++] =
-//                 globalNumbering().toGlobal(neiProc, neiIndex);
-//         }
-//         else
-//         {
-//             transformed[trafoI++] = index;
-//         }
-//     }
-// 
-//     untransformed.setSize(untrafoI);
-//     transformed.setSize(trafoI);
-// 
-//     return transformed;
-// }
-
-//XXXXXXX
-// //- Transform transformed only
-// void Foam::cellToFaceExtStencil::transform
-// (
-//     const polyMesh& mesh,
-//     const label patchI,
-//     const globalIndex& globalNumbering,
-//     const labelList& untrafoStencil,
-//     DynamicList<labelPair>& transformed
-// )
-// {
-//     const globalIndexAndTransform& globalTransforms =
-//         mesh.globalData().globalTransforms();
-// 
-//     transformed.clear();
-// 
-//     forAll(untrafoStencil, i)
-//     {
-//         const label elem = untrafoStencil[i];
-//         // Get components of neighbouring data
-//         label neiProc = globalNumbering.whichProcID(elem);
-//         label neiIndex = globalNumbering.toLocal(neiProc, elem);
-// 
-//         labelPair index = globalIndexAndTransform::encode
-//         (
-//             neiProc,
-//             neiIndex,
-//             globalTransforms.addToTransformIndex
-//             (
-//                 globalTransforms.nullTransformIndex(),
-//                 patchI,
-//                 false   // patchI is the receiving patch
-//             )
-//         );
-// 
-//         if (findIndex(transformed, index) == -1)
-//         {
-//             transformed.append(index);
-//         }
-//     }
-// }
-// void Foam::cellToFaceExtStencil::transform
-// (
-//     const polyMesh& mesh,
-//     const label patchI,
-//     const globalIndex& globalNumbering,
-//     const labelList& untrafoStencil,
-//     const labelPairList& trafoStencil,
-//     DynamicList<label>& untransformed,
-//     DynamicList<labelPair>& transformed
-// )
-// {
-//     const globalIndexAndTransform& globalTransforms =
-//         mesh.globalData().globalTransforms();
-// 
-//     untransformed.clear();
-//     transformed.clear();
-// 
-//     forAll(untrafoStencil, i)
-//     {
-//         const label elem = untrafoStencil[i];
-//         // Get components of neighbouring data
-//         label neiProc = globalNumbering.whichProcID(elem);
-//         label neiIndex = globalNumbering.toLocal(neiProc, elem);
-// 
-//         labelPair index = globalIndexAndTransform::encode
-//         (
-//             neiProc,
-//             neiIndex,
-//             globalTransforms.addToTransformIndex
-//             (
-//                 globalTransforms.nullTransformIndex(),
-//                 patchI,
-//                 false   // patchI is the receiving patch
-//             )
-//         );
-// 
-//         // Check if has transform to see which bin to add to
-//         if
-//         (
-//             globalIndexAndTransform::transformIndex(index)
-//          == globalTransforms.nullTransformIndex()
-//         )
-//         {
-//             label globalCellI = globalNumbering.toGlobal(neiProc, neiIndex);
-//             if (findIndex(untransformed, globalCellI) == -1)
-//             {
-//                 untransformed.append(globalCellI);
-//             }   
-//         }
-//         else if (findIndex(transformed, index) == -1)
-//         {
-//             transformed.append(index);
-//         }
-//     }
-//     forAll(trafoStencil, i)
-//     {
-//         const labelPair& elem = trafoStencil[i];
-//         // Get components of neighbouring data
-//         label neiProc = globalIndexAndTransform::processor(elem);
-//         label neiIndex = globalIndexAndTransform::index(elem);
-//         label neiTransform = globalIndexAndTransform::transformIndex(elem);
-// 
-//         labelPair index = globalIndexAndTransform::encode
-//         (
-//             neiProc,
-//             neiIndex,
-//             globalTransforms.addToTransformIndex
-//             (
-//                 neiTransform,
-//                 patchI,
-//                 false   // patchI is the receiving patch
-//             )
-//         );
-// 
-//         // Check for transform added twice so creating the untransformed
-//         // item again.
-//         if
-//         (
-//             globalIndexAndTransform::transformIndex(index)
-//          == globalTransforms.nullTransformIndex()
-//         )
-//         {
-//             label globalCellI = globalNumbering.toGlobal(neiProc, neiIndex);
-//             if (findIndex(untransformed, globalCellI) == -1)
-//             {
-//                 untransformed.append(globalCellI);
-//             }
-//         }
-//         else if (findIndex(transformed, index) == -1)
-//         {
-//             transformed.append(index);
-//         }
-//     }
-// }
-//XXXXXXXX
-
-
 // Calculates per face a list of global cell/face indices.
 void Foam::cellToFaceExtStencil::calcFaceStencil
 (
@@ -521,13 +293,14 @@ void Foam::cellToFaceExtStencil::calcFaceStencil
 
             if (transSign.first() == nullIndex)
             {
-                // The easy case: no transform
+                // The easy case: no transform so behave exactly like
+                // and internal face
                 forAll(pp, i)
                 {
                     label bfaceI = faceI-mesh_.nInternalFaces();
 
                     // Do stencil without transformations. Add neighbour
-                    // in correct slot (=1).
+                    // in correct slot
                     merge
                     (
                         untrafoCellCells[own[faceI]],
@@ -548,20 +321,8 @@ void Foam::cellToFaceExtStencil::calcFaceStencil
             {
                 // Add the transformation
                 forAll(pp, i)
-// Hilary: Using i to loop over pp
                 {
                     label bFaceI = faceI-mesh_.nInternalFaces();
-
-                    // Neighbour stencils gets transform added
-                    // Face stencil should have neighbour data in fixed
-                    // location:
-                    //      untransformed : (owner -1 rest)
-                    //      transformed   : (neighbour rest)
-                    // Note:
-                    // - owner is 0th element of untrafoCellCells of owner
-                    // - neighbour is transformed 0th element of
-                    //   untrafoCellCells of neighbour
-
 
                     const labelPairList neiUntrafo
                     (
@@ -591,14 +352,16 @@ void Foam::cellToFaceExtStencil::calcFaceStencil
                     const labelList& ownCells = untrafoCellCells[own[faceI]];
                     untransformed.append(ownCells[0]);
 
-                    // This is the problem one: where do we put the neighbour
+                    // This is the problem one: where do we put the neighbour.
+                    // It can either be in the untransformed or transformed
+                    // section.
+                    // Previous choice was to
                     // - leave a -1 in the stencil
                     // - but this leads to additional points which now have
                     //   to be discarded
                     //untransformed.append(-1);
 
                     for (label i = 1; i < ownCells.size(); i++)
-//Hilary: Using i to loop over ownCells
                     {
                         label elem = ownCells[i];
                         if (findIndex(untransformed, elem) == -1)
@@ -608,13 +371,9 @@ void Foam::cellToFaceExtStencil::calcFaceStencil
                     }
 
                     // 2. Double transformed neigbour cells
-                    forAll(neiTrafo, I)
+                    forAll(neiTrafo, i)
                     {
-//Hilary: Should neiTrafo be indexed by i or I?
-                        Info << "This is the line where it crashes i = "
-                             << i << " I = " << I << endl;
-                        const labelPair& elem = neiTrafo[I];
-                        Info << "Not this time" << endl;
+                        const labelPair& elem = neiTrafo[i];
                         if
                         (
                             globalIndexAndTransform::transformIndex(elem)
@@ -709,7 +468,6 @@ Foam::cellToFaceExtStencil::cellToFaceExtStencil(const polyMesh& mesh)
 :
     mesh_(mesh),
     globalNumbering_(mesh_.nCells()+mesh_.nFaces()-mesh_.nInternalFaces())
-    //globalTransforms_(mesh_)
 {}
 
 

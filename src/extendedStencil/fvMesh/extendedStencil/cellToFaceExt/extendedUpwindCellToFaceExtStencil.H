@@ -48,6 +48,7 @@ SourceFiles
 #define extendedUpwindCellToFaceExtStencil_H
 
 #include "extendedCellToFaceExtStencil.H"
+#include "cellToFaceExtStencil.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -74,13 +75,14 @@ class extendedUpwindCellToFaceExtStencil
         autoPtr<mapDistribute> ownMapPtr_;
         autoPtr<mapDistribute> neiMapPtr_;
 
-        //- Per face the owner and neighbour stencils.
+        //- Per face the owner stencils.
         labelListList ownUntransformedElements_;
-        labelListList neiUntransformedElements_;
-
-        //- Per face the owner and neighbour transformed elements
         labelListList ownTransformedElements_;
+
+        //- Per face the neighbour stencils
+        labelListList neiUntransformedElements_;
         labelListList neiTransformedElements_;
+
 
     // Private Member Functions
 
@@ -99,17 +101,17 @@ class extendedUpwindCellToFaceExtStencil
         (
             const boolList& nonEmptyFace,
             const labelListList& faceStencil,
-            const labelListList& transformedFaceStencil,
+            const List<labelPairList>& transformedFaceStencil,
             const scalar minOpposedness,
             const label faceI,
             const label cellI,
-            const bool stencilHasNeighbour,
+            const cellToFaceExtStencil::neighbourLocation nbrStat,
 
             DynamicList<label>& oppositeFaces,
             labelHashSet& faceStencilSet,
-            labelHashSet& transformedFaceStencilSet,
+            HashSet<labelPair, labelPair::Hash<>>& transformedFaceStencilSet,
             labelList& transportedStencil,
-            labelList& transportedTransformedStencil
+            labelPairList& transportedTransformedStencil
         ) const;
 
         //- Transport (centred) face stencil to 'opposite' faces.
@@ -119,8 +121,8 @@ class extendedUpwindCellToFaceExtStencil
             const List<labelPairList>& transformedStencil,
             const scalar minOpposedness,
             labelListList& ownStencil,
-            labelListList& neiStencil,
             List<labelPairList>& ownTransformedElements,
+            labelListList& neiStencil,
             List<labelPairList>& neiTransformedElements
         ) const;
 
@@ -220,8 +222,8 @@ public:
                 ownMap(),
                 ownUntransformedElements(),
                 ownTransformedElements(),
-                fld(),
-                stencilFld(),
+                fld,
+                stencilFld,
                 mapDistribute::transformPosition()
             );
         }
@@ -239,8 +241,8 @@ public:
                 neiMap(),
                 neiUntransformedElements(),
                 neiTransformedElements(),
-                fld(),
-                stencilFld(),
+                fld,
+                stencilFld,
                 mapDistribute::transformPosition()
             );
         }

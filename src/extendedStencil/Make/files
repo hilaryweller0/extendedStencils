@@ -2,7 +2,7 @@ cellToFaceExt = fvMesh/extendedStencil/cellToFaceExt
 
 $(cellToFaceExt)/extendedCellToFaceExtStencil.C
 $(cellToFaceExt)/extendedCentredCellToFaceExtStencil.C
-/*$(cellToFaceExt)/extendedUpwindCellToFaceExtStencil.C*/
+$(cellToFaceExt)/extendedUpwindCellToFaceExtStencil.C
 
 globalIndexStencils = $(cellToFaceExt)/globalIndexStencils
 

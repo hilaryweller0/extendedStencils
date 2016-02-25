@@ -58,6 +58,21 @@ class polyMesh;
 
 class cellToFaceExtStencil
 {
+
+public:
+
+        //- Enumeration defining the location of the neighbour in the
+        //  stencil
+        enum neighbourLocation
+        {
+            NONE,               // N/A
+            UNTRANSFORMED,      // after owner in untransformed part
+            TRANSFORMED         // first element in transformed part
+        };
+
+
+private:
+
     // Private data
 
         const polyMesh& mesh_;

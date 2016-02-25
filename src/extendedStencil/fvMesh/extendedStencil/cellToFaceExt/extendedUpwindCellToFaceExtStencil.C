@@ -112,24 +112,45 @@ void Foam::extendedUpwindCellToFaceExtStencil::transportStencil
 (
     const boolList& nonEmptyFace,
     const labelListList& faceStencil,
-    const labelListList& transformedFaceStencil,
+    const List<labelPairList>& transformedFaceStencil,
     const scalar minOpposedness,
     const label faceI,
     const label cellI,
-    const bool stencilHasNeighbour,
+    const cellToFaceExtStencil::neighbourLocation nbrStat,
 
+    // Work storage
     DynamicList<label>& oppositeFaces,
     labelHashSet& faceStencilSet,
-    labelHashSet& transformedFaceStencilSet,
+    HashSet<labelPair, labelPair::Hash<>>& transformedFaceStencilSet,
     labelList& transportedStencil,
-    labelList& transportedTransformedStencil
+    labelPairList& transportedTransformedStencil
 ) const
 {
+    const globalIndexAndTransform& globalTransforms =
+        mesh_.globalData().globalTransforms();
+    const label nullIndex = globalTransforms.nullTransformIndex();
+
+    // Extract owner (always in untransformed part) and neighbour
+    // (depends on nbrStat)
     label globalOwn = faceStencil[faceI][0];
     label globalNei = -1;
-    if (stencilHasNeighbour && faceStencil[faceI].size() >= 2)
+    labelPair globalTrafoNei
+    (
+        globalIndexAndTransform::encode
+        (
+            -1,
+            -1,
+            nullIndex
+        )
+    );
+
+    if (nbrStat == cellToFaceExtStencil::UNTRANSFORMED)
     {
         globalNei = faceStencil[faceI][1];
+    }
+    else if (nbrStat == cellToFaceExtStencil::TRANSFORMED)
+    {
+        globalTrafoNei = transformedFaceStencil[faceI][0];
     }
 
     selectOppositeFaces
@@ -143,6 +164,7 @@ void Foam::extendedUpwindCellToFaceExtStencil::transportStencil
 
     // Collect all stencils of opposite faces
     faceStencilSet.clear();
+    transformedFaceStencilSet.clear();
     forAll(oppositeFaces, i)
     {
         const labelList& fStencil = faceStencil[oppositeFaces[i]];
@@ -157,88 +179,61 @@ void Foam::extendedUpwindCellToFaceExtStencil::transportStencil
             }
         }
         
-        const labelList& fTransformedStencil
+        const labelPairList& fTransformedStencil
              = transformedFaceStencil[oppositeFaces[i]];
         
         forAll(fTransformedStencil, j)
         {
-            transformedFaceStencilSet.insert(fTransformedStencil[j]);
-        }
-    }
-
-    // Add my owner and neighbour first.
-    if (stencilHasNeighbour)
-    {
-        transportedStencil.setSize(faceStencilSet.size()+2);
-        transportedTransformedStencil.setSize(transformedFaceStencil.size());
-        label n = 0;
-        transportedStencil[n++] = globalOwn;
-        transportedStencil[n++] = globalNei;
-
-        forAllConstIter(labelHashSet, faceStencilSet, iter)
-        {
-            if (iter.key() != globalOwn && iter.key() != globalNei)
+            const labelPair& globalI = fTransformedStencil[j];
+            if (globalI != globalTrafoNei)
             {
-                transportedStencil[n++] = iter.key();
+                transformedFaceStencilSet.insert(globalI);
             }
         }
-        if (n != transportedStencil.size())
-        {
-            FatalErrorIn
-            (
-                "extendedUpwindCellToFaceExtStencil::transportStencil(..)"
-            )   << "problem:" << faceStencilSet
-                << abort(FatalError);
-        }
-        n = 0;
-        forAllConstIter(labelHashSet, transformedFaceStencilSet, iter)
-        {
-            transportedTransformedStencil[n++] = iter.key();
-        }
-        if (n != transportedTransformedStencil.size())
-        {
-            FatalErrorIn
-            (
-                "extendedUpwindCellToFaceExtStencil::transportStencil(..)"
-            )   << "problem:" << transformedFaceStencilSet
-                << abort(FatalError);
-        }
     }
-    else
+
+    // Add my owner and neighbour first and then rest of stencils
+
+    label untrafoI = 0;
+    label trafoI = 0;
+
+    if (nbrStat == cellToFaceExtStencil::NONE)
     {
         transportedStencil.setSize(faceStencilSet.size()+1);
         transportedTransformedStencil.setSize(transformedFaceStencil.size());
-        label n = 0;
-        transportedStencil[n++] = globalOwn;
+        transportedStencil[untrafoI++] = globalOwn;
+    }
+    else if (nbrStat == cellToFaceExtStencil::UNTRANSFORMED)
+    {
+        transportedStencil.setSize(faceStencilSet.size()+2);
+        transportedTransformedStencil.setSize(transformedFaceStencil.size());
+        transportedStencil[untrafoI++] = globalOwn;
+        transportedStencil[untrafoI++] = globalNei;
+    }
+    else    // TRANSFORMED
+    {
+        transportedStencil.setSize(faceStencilSet.size()+1);
+        transportedTransformedStencil.setSize(transformedFaceStencil.size()+1);
 
-        forAllConstIter(labelHashSet, faceStencilSet, iter)
-        {
-            if (iter.key() != globalOwn)
-            {
-                transportedStencil[n++] = iter.key();
-            }
-        }
-        if (n != transportedStencil.size())
-        {
-            FatalErrorIn
-            (
-                "extendedUpwindCellToFaceStencil::transportStencil(..)"
-            )   << "problem:" << faceStencilSet
-                << abort(FatalError);
-        }
-        n = 0;
-        forAllConstIter(labelHashSet, transformedFaceStencilSet, iter)
-        {
-            transportedTransformedStencil[n++] = iter.key();
-        }
-        if (n != transportedTransformedStencil.size())
-        {
-            FatalErrorIn
-            (
-                "extendedUpwindCellToFaceExtStencil::transportStencil(..)"
-            )   << "problem:" << transformedFaceStencilSet
-                << abort(FatalError);
-        }
+        transportedStencil[untrafoI++] = globalOwn;
+        transportedTransformedStencil[trafoI++] = globalTrafoNei;
+    }
+
+    forAllConstIter(labelHashSet, faceStencilSet, iter)
+    {
+        transportedStencil[untrafoI++] = iter.key();
+    }
+
+    typedef HashSet<labelPair, labelPair::Hash<> > labelPairHashSet;
+
+    forAllConstIter
+    (
+        labelPairHashSet,
+        transformedFaceStencilSet,
+        iter
+    )
+    {
+        transportedTransformedStencil[trafoI++] = iter.key();
     }
 }
 
@@ -249,11 +244,14 @@ void Foam::extendedUpwindCellToFaceExtStencil::transportStencils
     const List<labelPairList>& transformedStencil,
     const scalar minOpposedness,
     labelListList& ownStencil,
-    labelListList& neiStencil,
     List<labelPairList>& ownTransformedElements,
+    labelListList& neiStencil,
     List<labelPairList>& neiTransformedElements
 ) const
 {
+    const globalIndexAndTransform& globalTransforms =
+        mesh_.globalData().globalTransforms();
+    const label nullIndex = globalTransforms.nullTransformIndex();
     const polyBoundaryMesh& patches = mesh_.boundaryMesh();
     const label nBnd = mesh_.nFaces()-mesh_.nInternalFaces();
     const labelList& own = mesh_.faceOwner();
@@ -262,7 +260,7 @@ void Foam::extendedUpwindCellToFaceExtStencil::transportStencils
     // Work arrays
     DynamicList<label> oppositeFaces;
     labelHashSet faceStencilSet;
-    labelHashSet transformedFaceStencilSet;
+    HashSet<labelPair, labelPair::Hash<>> transformedFaceStencilSet;
 
     // For quick detection of empty faces
     boolList nonEmptyFace(mesh_.nFaces(), true);
@@ -300,7 +298,7 @@ void Foam::extendedUpwindCellToFaceExtStencil::transportStencils
             minOpposedness,
             faceI,
             own[faceI],
-            true,                   //stencilHasNeighbour
+            cellToFaceExtStencil::UNTRANSFORMED,   // nbr in untransformed part
             oppositeFaces,
             faceStencilSet,
             transformedFaceStencilSet,
@@ -316,25 +314,55 @@ void Foam::extendedUpwindCellToFaceExtStencil::transportStencils
 
         if (pp.coupled())
         {
-            forAll(pp, i)
-            {
-                transportStencil
-                (
-                    nonEmptyFace,
-                    faceStencil,
-                    transformedStencil,
-                    minOpposedness,
-                    faceI,
-                    own[faceI],
-                    true,                   //stencilHasNeighbour
+            const labelPair& transSign =
+                globalTransforms.patchTransformSign()[patchI];
 
-                    oppositeFaces,
-                    faceStencilSet,
-                    transformedFaceStencilSet,
-                    ownStencil[faceI],
-                    ownTransformedElements[faceI]
-                );
-                faceI++;
+            if (transSign.first() == nullIndex)
+            {
+                // Colocated coupled patch. Do exactly as if internal face
+                forAll(pp, i)
+                {
+                    transportStencil
+                    (
+                        nonEmptyFace,
+                        faceStencil,
+                        transformedStencil,
+                        minOpposedness,
+                        faceI,
+                        own[faceI],
+                        cellToFaceExtStencil::UNTRANSFORMED,
+
+                        oppositeFaces,
+                        faceStencilSet,
+                        transformedFaceStencilSet,
+                        ownStencil[faceI],
+                        ownTransformedElements[faceI]
+                    );
+                    faceI++;
+                }
+            }
+            else
+            {
+                forAll(pp, i)
+                {
+                    transportStencil
+                    (
+                        nonEmptyFace,
+                        faceStencil,
+                        transformedStencil,
+                        minOpposedness,
+                        faceI,
+                        own[faceI],
+                        cellToFaceExtStencil::TRANSFORMED, // nbr in transfrmd part
+
+                        oppositeFaces,
+                        faceStencilSet,
+                        transformedFaceStencilSet,
+                        ownStencil[faceI],
+                        ownTransformedElements[faceI]
+                    );
+                    faceI++;
+                }
             }
         }
         else if (!isA<emptyPolyPatch>(pp))
@@ -350,7 +378,7 @@ void Foam::extendedUpwindCellToFaceExtStencil::transportStencils
                     minOpposedness,
                     faceI,
                     own[faceI],
-                    false,                  //stencilHasNeighbour
+                    cellToFaceExtStencil::NONE,
 
                     oppositeFaces,
                     faceStencilSet,
@@ -369,9 +397,12 @@ void Foam::extendedUpwindCellToFaceExtStencil::transportStencils
     // No idea how to do this for the coupled stencils
 
     labelListList neiBndStencil(nBnd);
+    List<labelPairList> neiBndTrafoStencil(nBnd);
     for (label faceI = mesh_.nInternalFaces(); faceI < mesh_.nFaces(); faceI++)
     {
-        neiBndStencil[faceI-mesh_.nInternalFaces()] = ownStencil[faceI];
+        label bFaceI = faceI-mesh_.nInternalFaces();
+        neiBndStencil[bFaceI] = ownStencil[faceI];
+        neiBndTrafoStencil[bFaceI] = ownTransformedElements[faceI];
     }
     //syncTools::swapBoundaryFaceList(mesh_, neiBndStencil);
     syncTools::syncBoundaryFaceList
@@ -381,7 +412,13 @@ void Foam::extendedUpwindCellToFaceExtStencil::transportStencils
         eqOp<labelList>(),
         dummyTransform()
     );
-
+    syncTools::syncBoundaryFaceList
+    (
+        mesh_,
+        neiBndTrafoStencil,
+        eqOp<labelPairList>(),
+        dummyTransform()
+    );
 
 
     // Do the neighbour side
@@ -404,7 +441,7 @@ void Foam::extendedUpwindCellToFaceExtStencil::transportStencils
             minOpposedness,
             faceI,
             nei[faceI],
-            true,                   //stencilHasNeighbour
+            cellToFaceExtStencil::UNTRANSFORMED,   // nbr in untransformed part
 
             oppositeFaces,
             faceStencilSet,
@@ -425,9 +462,11 @@ void Foam::extendedUpwindCellToFaceExtStencil::transportStencils
         {
             forAll(pp, i)
             {
-                neiStencil[faceI].transfer
+                label bFaceI = faceI-mesh_.nInternalFaces();
+                neiStencil[faceI].transfer(neiBndStencil[bFaceI]);
+                neiTransformedElements[faceI].transfer
                 (
-                    neiBndStencil[faceI-mesh_.nInternalFaces()]
+                    neiTransformedElements[bFaceI]
                 );
                 faceI++;
             }
@@ -453,8 +492,9 @@ Foam::extendedUpwindCellToFaceExtStencil::extendedUpwindCellToFaceExtStencil
     pureUpwind_(pureUpwind)
 {
     // Transport centred stencil to upwind/downwind face
-    // upwind part stored in ownStencil_, ownTransElems,
-    // downwind part stored in neiStencil_, neiTransElems
+    // upwind part stored in ownUntransformedElements_, ownTransformedElements_,
+    // downwind part stored in
+    // neiUntransformedElements_, neiTransformedElements_
 
     List<labelPairList> ownTransElems;
     List<labelPairList> neiTransElems;
@@ -463,9 +503,9 @@ Foam::extendedUpwindCellToFaceExtStencil::extendedUpwindCellToFaceExtStencil
         stencil.untransformedElements(),
         stencil.transformedElements(),
         minOpposedness,
-        ownStencil_,
-        neiStencil_,
+        ownUntransformedElements_,
         ownTransElems,
+        neiUntransformedElements_,
         neiTransElems
     );
 
@@ -478,7 +518,7 @@ Foam::extendedUpwindCellToFaceExtStencil::extendedUpwindCellToFaceExtStencil
             new mapDistribute
             (
                 stencil.globalNumbering(),
-                ownStencil_,
+                ownUntransformedElements_,
                 stencil.mesh().globalData().globalTransforms(),
                 ownTransElems,
                 ownTransformedElements_,
@@ -496,7 +536,7 @@ Foam::extendedUpwindCellToFaceExtStencil::extendedUpwindCellToFaceExtStencil
             new mapDistribute
             (
                 stencil.globalNumbering(),
-                neiStencil_,
+                neiUntransformedElements_,
                 stencil.mesh().globalData().globalTransforms(),
                 neiTransElems,
                 neiTransformedElements_,
@@ -512,12 +552,12 @@ Foam::extendedUpwindCellToFaceExtStencil::extendedUpwindCellToFaceExtStencil
 //    {
 //        const fvMesh& mesh = dynamic_cast<const fvMesh&>(stencil.mesh());
 //
-//        List<List<point> > stencilPoints(ownStencil_.size());
+//        List<List<point> > stencilPoints(ownUntransformedElements_.size());
 //
 //        // Owner stencil
 //        // ~~~~~~~~~~~~~
 //
-//        collectData(ownMapPtr_(), ownStencil_, mesh.C(), stencilPoints);
+//        collectData(ownMapPtr_(), ownUntransformedElements_, mesh.C(), stencilPoints);
 //
 //        // Mask off all stencil points on wrong side of face
 //        forAll(stencilPoints, faceI)
@@ -526,7 +566,7 @@ Foam::extendedUpwindCellToFaceExtStencil::extendedUpwindCellToFaceExtStencil
 //            const vector& fArea = mesh.faceAreas()[faceI];
 //
 //            const List<point>& points = stencilPoints[faceI];
-//            const labelList& stencil = ownStencil_[faceI];
+//            const labelList& stencil = ownUntransformedElements_[faceI];
 //
 //            DynamicList<label> newStencil(stencil.size());
 //            forAll(points, i)
@@ -538,7 +578,7 @@ Foam::extendedUpwindCellToFaceExtStencil::extendedUpwindCellToFaceExtStencil
 //            }
 //            if (newStencil.size() != stencil.size())
 //            {
-//                ownStencil_[faceI].transfer(newStencil);
+//                ownUntransformedElements_[faceI].transfer(newStencil);
 //            }
 //        }
 //
@@ -546,7 +586,7 @@ Foam::extendedUpwindCellToFaceExtStencil::extendedUpwindCellToFaceExtStencil
 //        // Neighbour stencil
 //        // ~~~~~~~~~~~~~~~~~
 //
-//        collectData(neiMapPtr_(), neiStencil_, mesh.C(), stencilPoints);
+//        collectData(neiMapPtr_(), neiUntransformedElements_, mesh.C(), stencilPoints);
 //
 //        // Mask off all stencil points on wrong side of face
 //        forAll(stencilPoints, faceI)
@@ -555,7 +595,7 @@ Foam::extendedUpwindCellToFaceExtStencil::extendedUpwindCellToFaceExtStencil
 //            const vector& fArea = mesh.faceAreas()[faceI];
 //
 //            const List<point>& points = stencilPoints[faceI];
-//            const labelList& stencil = neiStencil_[faceI];
+//            const labelList& stencil = neiUntransformedElements_[faceI];
 //
 //            DynamicList<label> newStencil(stencil.size());
 //            forAll(points, i)
@@ -567,16 +607,16 @@ Foam::extendedUpwindCellToFaceExtStencil::extendedUpwindCellToFaceExtStencil
 //            }
 //            if (newStencil.size() != stencil.size())
 //            {
-//                neiStencil_[faceI].transfer(newStencil);
+//                neiUntransformedElements_[faceI].transfer(newStencil);
 //            }
 //        }
 //
 //        // Note: could compact schedule as well. for if cells are not needed
 //        // across any boundary anymore. However relatively rare.
 //    }
-//}
+}
 
-// No idea how to modify this constructor for tranformed stencils
+
 Foam::extendedUpwindCellToFaceExtStencil::extendedUpwindCellToFaceExtStencil
 (
     const cellToFaceExtStencil& stencil
@@ -590,23 +630,26 @@ Foam::extendedUpwindCellToFaceExtStencil::extendedUpwindCellToFaceExtStencil
     // Calculate stencil points with full stencil
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    List<List<point> > stencilPoints(ownStencil_.size());
+    List<List<point> > stencilPoints(ownUntransformedElements_.size());
     {
         labelListList untransfoIndices(stencil.untransformedElements());
         labelListList trafoIndices;
         List<Map<label> > compactMap(Pstream::nProcs());
-        mapDistribute map
+        ownMapPtr_.reset
         (
-            stencil.globalNumbering(),
-            untransfoIndices,
-            stencil.mesh().globalData().globalTransforms(),
-            stencil.transformedElements(),
-            trafoIndices,
-            compactMap
+            new mapDistribute
+            (
+                stencil.globalNumbering(),
+                untransfoIndices,
+                stencil.mesh().globalData().globalTransforms(),
+                stencil.transformedElements(),
+                trafoIndices,
+                compactMap
+            )
         );
         collectData
         (
-            map,
+            ownMapPtr_(),
             untransfoIndices,
             trafoIndices,
             mesh.C(),
@@ -619,8 +662,11 @@ Foam::extendedUpwindCellToFaceExtStencil::extendedUpwindCellToFaceExtStencil
     // Split stencil into owner and neighbour
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    ownStencil_.setSize(mesh.nFaces());
-    neiStencil_.setSize(mesh.nFaces());
+    ownUntransformedElements_.setSize(mesh.nFaces());
+    List<labelPairList> ownTransElems(mesh.nFaces());
+
+    neiUntransformedElements_.setSize(mesh.nFaces());
+    List<labelPairList> neiTransElems(mesh.nFaces());
 
     forAll(stencilPoints, faceI)
     {
@@ -629,34 +675,70 @@ Foam::extendedUpwindCellToFaceExtStencil::extendedUpwindCellToFaceExtStencil
 
         const List<point>& points = stencilPoints[faceI];
 
-        const labelList& untrafo =
-            stencil.untransformedElements()[faceI];
-        const labelPairList& trafo =
-            stencil.transformedElements()[faceI];
+        const labelList& untrafo = stencil.untransformedElements()[faceI];
+        const labelPairList& trafo = stencil.transformedElements()[faceI];
 
         DynamicList<label> newOwnStencil(untrafo.size());
-        DynamicList<labelPair> newOwnTrafoStencil(
+        DynamicList<labelPair> newOwnTrafoStencil(trafo.size());
+
         DynamicList<label> newNeiStencil(untrafo.size());
+        DynamicList<labelPair> newNeiTrafoStencil(trafo.size());
         forAll(points, i)
         {
             if (((points[i]-fc) & fArea) > 0)
             {
-                newNeiStencil.append(stencil[i]);
+                newNeiStencil.append(untrafo[i]);
+                newNeiTrafoStencil.append(trafo[i]);
             }
             else
             {
-                newOwnStencil.append(stencil[i]);
+                newOwnStencil.append(untrafo[i]);
+                newOwnTrafoStencil.append(trafo[i]);
             }
         }
-        if (newNeiStencil.size() > 0)
-        {
-            ownStencil_[faceI].transfer(newOwnStencil);
-            neiStencil_[faceI].transfer(newNeiStencil);
-        }
+        ownUntransformedElements_[faceI].transfer(newOwnStencil);
+        ownTransElems[faceI].transfer(newOwnTrafoStencil);
+
+        neiUntransformedElements_[faceI].transfer(newNeiStencil);
+        neiTransElems[faceI].transfer(newNeiTrafoStencil);
     }
 
-    // Should compact schedule. Or have both return the same schedule.
-    neiMapPtr_.reset(new mapDistribute(ownMapPtr_()));
+
+    // Convert owner side untransformed and transformed cell indices into
+    // a schedule
+    {
+        List<Map<label> > compactMap(Pstream::nProcs());
+        ownMapPtr_.reset
+        (
+            new mapDistribute
+            (
+                stencil.globalNumbering(),
+                ownUntransformedElements_,
+                stencil.mesh().globalData().globalTransforms(),
+                ownTransElems,
+                ownTransformedElements_,
+                compactMap
+            )
+        );
+    }
+
+    // Convert neighbour side untransformed and transformed cell indices into
+    // a schedule
+    {
+        List<Map<label> > compactMap(Pstream::nProcs());
+        neiMapPtr_.reset
+        (
+            new mapDistribute
+            (
+                stencil.globalNumbering(),
+                neiUntransformedElements_,
+                stencil.mesh().globalData().globalTransforms(),
+                neiTransElems,
+                neiTransformedElements_,
+                compactMap
+            )
+        );
+    }
 }
 
 
