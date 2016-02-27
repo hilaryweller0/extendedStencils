@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,45 +23,49 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "CentredFitData.H"
+#include "UpwindFitData.H"
 #include "surfaceFields.H"
 #include "volFields.H"
 #include "SVD.H"
 #include "syncTools.H"
-#include "extendedCentredCellToFaceExtStencil.H"
+#include "extendedUpwindCellToFaceExtStencil.H"
 
 // * * * * * * * * * * * * * * * * Constructors * * * * * * * * * * * * * * //
 
 template<class Polynomial>
-Foam::CentredFitData<Polynomial>::CentredFitData
+Foam::UpwindFitData<Polynomial>::UpwindFitData
 (
     const fvMesh& mesh,
-    const extendedCentredCellToFaceExtStencil& stencil,
+    const extendedUpwindCellToFaceExtStencil& stencil,
+    const bool linearCorrection,
     const scalar linearLimitFactor,
     const scalar centralWeight
 )
 :
     FitData
     <
-        CentredFitData<Polynomial>,
-        extendedCentredCellToFaceExtStencil,
+        UpwindFitData<Polynomial>,
+        extendedUpwindCellToFaceExtStencil,
         Polynomial
     >
     (
-        mesh, stencil, true, linearLimitFactor, centralWeight
+        mesh, stencil, linearCorrection, linearLimitFactor, centralWeight
     ),
-    coeffs_(mesh.nFaces())
+    owncoeffs_(mesh.nFaces()),
+    neicoeffs_(mesh.nFaces())
 {
     if (debug)
     {
-        InfoInFunction << "Contructing CentredFitData<Polynomial>" << endl;
+        Info<< "Contructing UpwindFitData<Polynomial>" << endl;
     }
 
     calcFit();
 
     if (debug)
     {
-        Info<<     "Finished constructing polynomialFit data" << endl;
+        Info<< "UpwindFitData<Polynomial>::UpwindFitData() :"
+            << "Finished constructing polynomialFit data"
+            << endl;
     }
 }
 
@@ -69,7 +73,7 @@ Foam::CentredFitData<Polynomial>::CentredFitData
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class Polynomial>
-void Foam::CentredFitData<Polynomial>::calcFit()
+void Foam::UpwindFitData<Polynomial>::calcFit()
 {
     const fvMesh& mesh = this->mesh();
 
@@ -80,21 +84,23 @@ void Foam::CentredFitData<Polynomial>::calcFit()
     // Centred face stencils no good for triangles or tets.
     // Need bigger stencils
     List<List<point>> stencilPoints(mesh.nFaces());
-    this->stencil().collectPositions(mesh.C(), stencilPoints);
+    this->stencil().collectOwnPositions(mesh.C(), stencilPoints);
 
-    // find the fit coefficients for every face in the mesh
+    // Owner stencil weights
+    // ~~~~~~~~~~~~~~~~~~~~~
 
+    // find the fit coefficients for every owner
     for (label facei = 0; facei < mesh.nInternalFaces(); facei++)
     {
         FitData
         <
-            CentredFitData<Polynomial>,
-            extendedCentredCellToFaceExtStencil,
+            UpwindFitData<Polynomial>,
+            extendedUpwindCellToFaceExtStencil,
             Polynomial
-        >::calcFit(coeffs_[facei], stencilPoints[facei], w[facei], facei);
+        >::calcFit(owncoeffs_[facei], stencilPoints[facei], w[facei], facei);
     }
 
-	// And for the boundaries
+    // And for the boundaries
     forAll(bw, patchi)
     {
         const fvsPatchScalarField& pw = bw[patchi];
@@ -107,10 +113,56 @@ void Foam::CentredFitData<Polynomial>::calcFit()
             {
                 FitData
                 <
-                    CentredFitData<Polynomial>,
-                    extendedCentredCellToFaceExtStencil,
+                    UpwindFitData<Polynomial>,
+                    extendedUpwindCellToFaceExtStencil,
                     Polynomial
-                >::calcFit(coeffs_[facei], stencilPoints[facei], pw[i], facei);
+                >::calcFit
+                (
+                    owncoeffs_[facei], stencilPoints[facei], pw[i], facei
+                );
+                facei++;
+            }
+        }
+    }
+
+
+    // Neighbour stencil weights
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    // Note:reuse stencilPoints since is major storage
+    this->stencil().collectNeiPositions(mesh.C(), stencilPoints);
+
+    // find the fit coefficients for every neighbour
+    for (label facei = 0; facei < mesh.nInternalFaces(); facei++)
+    {
+        FitData
+        <
+            UpwindFitData<Polynomial>,
+            extendedUpwindCellToFaceExtStencil,
+            Polynomial
+        >::calcFit(neicoeffs_[facei], stencilPoints[facei], w[facei], facei);
+    }
+
+    forAll(bw, patchi)
+    {
+        const fvsPatchScalarField& pw = bw[patchi];
+
+        if (pw.coupled())
+        {
+            label facei = pw.patch().start();
+
+            forAll(pw, i)
+            {
+                scalarList wts(stencilPoints[facei].size(), scalar(1));
+                FitData
+                <
+                    UpwindFitData<Polynomial>,
+                    extendedUpwindCellToFaceExtStencil,
+                    Polynomial
+                >::calcFit
+                (
+                    neicoeffs_[facei], stencilPoints[facei], pw[i], facei
+                );
                 facei++;
             }
         }

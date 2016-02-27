@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2013 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -22,97 +22,91 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::CentredFitData
+    Foam::upwindCPCCellToFaceExtStencilObject
 
 Description
-    Data for the quadratic fit correction interpolation scheme
 
 SourceFiles
-    CentredFitData.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef CentredFitData_H
-#define CentredFitData_H
+#ifndef upwindCPCCellToFaceExtStencilObject_H
+#define upwindCPCCellToFaceExtStencilObject_H
 
-#include "FitData.H"
+#include "extendedUpwindCellToFaceExtStencil.H"
+#include "CPCCellToFaceExtStencil.H"
+#include "MeshObject.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-class extendedCentredCellToFaceExtStencil;
-
 /*---------------------------------------------------------------------------*\
-                    Class CentredFitData Declaration
+              Class upwindCPCCellToFaceExtStencilObject Declaration
 \*---------------------------------------------------------------------------*/
 
-template<class Polynomial>
-class CentredFitData
+class upwindCPCCellToFaceExtStencilObject
 :
-    public FitData
+    public MeshObject
     <
-        CentredFitData<Polynomial>,
-        extendedCentredCellToFaceExtStencil,
-        Polynomial
-    >
+        fvMesh,
+        TopologicalMeshObject,
+        upwindCPCCellToFaceExtStencilObject
+    >,
+    public extendedUpwindCellToFaceExtStencil
 {
-    // Private data
-
-        //- For each cell in the mesh store the values which multiply the
-        //  values of the stencil to obtain the interpolant
-        List<scalarList> coeffs_;
-
-
-    // Private Member Functions
-
-        //- Calculate the fit for the all the mesh faces
-        //  and set the coefficients
-        void calcFit();
-
 
 public:
 
-    TypeName("CentredFitData");
-
+    TypeName("upwindCPCCellToFaceExtStencil");
 
     // Constructors
 
-        //- Construct from components
-        CentredFitData
+        //- Construct from uncompacted face stencil
+        explicit upwindCPCCellToFaceExtStencilObject
         (
-            const fvMesh& mesh,
-            const extendedCentredCellToFaceExtStencil& stencil,
-            const scalar linearLimitFactor,
-            const scalar centralWeight
-        );
+            const fvMesh& mesh
+        )
+        :
+            MeshObject
+            <
+                fvMesh,
+                Foam::TopologicalMeshObject,
+                upwindCPCCellToFaceExtStencilObject
+            >(mesh),
+            extendedUpwindCellToFaceExtStencil
+            (
+                CPCCellToFaceExtStencil(mesh)
+            )
+        {
+            if (extendedCellToFaceExtStencil::debug)
+            {
+                Info<< "Generated off-centred stencil " << type()
+                    << nl << endl;
+                writeStencilStats
+                (
+                    Info, ownUntransformedElements(), ownTransformedElements(),
+                    ownMap()
+                );
+                writeStencilStats
+                (
+                    Info, neiUntransformedElements(), neiTransformedElements(),
+                    neiMap()
+                );
+            }
+        }
 
 
     //- Destructor
-    virtual ~CentredFitData()
+    virtual ~upwindCPCCellToFaceExtStencilObject()
     {}
-
-
-    // Member functions
-
-        //- Return reference to fit coefficients
-        const List<scalarList>& coeffs() const
-        {
-            return coeffs_;
-        }
 };
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-#ifdef NoRepository
-#   include "CentredFitData.C"
-#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

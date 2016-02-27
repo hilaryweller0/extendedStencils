@@ -11,10 +11,12 @@ $(globalIndexStencils)/cellToFaceExtStencil.C
 
 MeshObjects = $(cellToFaceExt)/MeshObjects
 $(MeshObjects)/centredCPCCellToFaceExtStencilObject.C
+$(MeshObjects)/upwindCPCCellToFaceExtStencilObject.C
 
 schemes = interpolation/surfaceInterpolation/schemes
 
 $(schemes)/quadraticCPCExtFit/quadraticCPCExtFit.C
+$(schemes)/quadraticUpwindCPCExtFit/quadraticUpwindCPCExtFit.C
 
 LIB = $(FOAM_USER_LIBBIN)/libextendedStencil
 

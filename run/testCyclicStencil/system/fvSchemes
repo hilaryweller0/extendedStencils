@@ -44,7 +44,7 @@ laplacianSchemes
 
 interpolationSchemes
 {
-    default        quadraticCPCExtFit 3;
+    default        quadraticUpwindCPCExtFit phi 3;
 }
 
 snGradSchemes
