@@ -90,6 +90,8 @@ protected:
         List<labelPairList> transformedElements_;
 
 
+public:
+
         //- Merge two lists.
         //static void merge(const labelList&, labelList&);
         static void merge(const labelPairList&, labelPairList&);
@@ -109,13 +111,15 @@ protected:
             const polyMesh&,
             const label patchI,
             const globalIndex& globalNumbering,
-            const labelList& untrafoStencil
+            const labelList& untrafoStencil,
+            const bool sendPatch
         );
         static labelPairList transform
         (
             const polyMesh&,
             const label patchI,
-            const labelPairList& trafoStencil
+            const labelPairList& trafoStencil,
+            const bool sendPatch
         );
 
         //- Collect cell neighbours into extended stencil

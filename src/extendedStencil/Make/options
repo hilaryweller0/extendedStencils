@@ -1,13 +1,14 @@
 EXE_INC = \
-    -ggdb3 -O0 -DFULLDEBUG \
+    -g -O0 -DFULLDEBUG \
     -IlnInclude \
-    -I$(WM_PROJECT_USER_DIR)/LEMOS-2.2.x/libLEMOS-2.2.x/lnInclude \
+    /* -I$(WM_PROJECT_USER_DIR)/LEMOS-2.2.x/libLEMOS-2.2.x/lnInclude */ \
     -I$(WM_THIRD_PARTY_DIR)/eigen-eigen-ffa86ffb5570 \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/triSurface/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude
 
 LIB_LIBS = \
+    /* -lLEMOS-2.2.x */ \
     -lfiniteVolume \
     -ltriSurface \
     -lmeshTools

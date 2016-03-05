@@ -115,7 +115,8 @@ Foam::labelPairList Foam::cellToFaceExtStencil::transform
     const polyMesh& mesh,
     const label patchI,
     const globalIndex& globalNumbering,
-    const labelList& untrafoStencil
+    const labelList& untrafoStencil,
+    const bool sendOrReceive
 )
 {
     const globalIndexAndTransform& globalTransforms =
@@ -137,7 +138,7 @@ Foam::labelPairList Foam::cellToFaceExtStencil::transform
             (
                 globalTransforms.nullTransformIndex(),
                 patchI,
-                false   // patchI is the receiving patch
+                sendOrReceive   // Is patchI the sending or receiving patch?
             )
         );
     }
@@ -149,7 +150,8 @@ Foam::labelPairList Foam::cellToFaceExtStencil::transform
 (
     const polyMesh& mesh,
     const label patchI,
-    const labelPairList& trafoStencil
+    const labelPairList& trafoStencil,
+    const bool sendOrReceive
 )
 {
     const globalIndexAndTransform& globalTransforms =
@@ -173,7 +175,7 @@ Foam::labelPairList Foam::cellToFaceExtStencil::transform
             (
                 neiTransform,
                 patchI,
-                false   // patchI is the receiving patch
+                sendOrReceive   // Is patchI the sending or receiving patch?
             )
         );
     }
@@ -331,7 +333,8 @@ void Foam::cellToFaceExtStencil::calcFaceStencil
                             mesh_,
                             patchI,
                             globalNumbering(),
-                            neiUntrafoCellCells[bFaceI]
+                            neiUntrafoCellCells[bFaceI],
+                            false
                         )
                     );
                     const labelPairList neiTrafo
@@ -340,7 +343,8 @@ void Foam::cellToFaceExtStencil::calcFaceStencil
                         (
                             mesh_,
                             patchI,
-                            neiTrafoCellCells[bFaceI]
+                            neiTrafoCellCells[bFaceI],
+                            false
                         )
                     );
 
