@@ -683,19 +683,38 @@ Foam::extendedUpwindCellToFaceExtStencil::extendedUpwindCellToFaceExtStencil
 
         DynamicList<label> newNeiStencil(untrafo.size());
         DynamicList<labelPair> newNeiTrafoStencil(trafo.size());
-        forAll(points, i)
+
+        // Untransformed first
+        label compactI = 0;
+        forAll(untrafo, i)
         {
-            if (((points[i]-fc) & fArea) > 0)
+            const point& pt = points[compactI++];
+
+            if (((pt-fc) & fArea) > 0)
             {
                 newNeiStencil.append(untrafo[i]);
-                newNeiTrafoStencil.append(trafo[i]);
             }
             else
             {
                 newOwnStencil.append(untrafo[i]);
+            }
+        }
+        // Transformed second
+        forAll(trafo, i)
+        {
+            const point& pt = points[compactI++];
+
+            if (((pt-fc) & fArea) > 0)
+            {
+                newNeiTrafoStencil.append(trafo[i]);
+            }
+            else
+            {
                 newOwnTrafoStencil.append(trafo[i]);
             }
         }
+
+
         ownUntransformedElements_[faceI].transfer(newOwnStencil);
         ownTransElems[faceI].transfer(newOwnTrafoStencil);
 
