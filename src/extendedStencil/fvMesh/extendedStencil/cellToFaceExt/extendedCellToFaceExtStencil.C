@@ -5,9 +5,6 @@
     \\  /    A nd           | Copyright (C) 2011-2012 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
- 2015-11-17 AtmosFOAM, Hilary Weller, University of Reading added support for
- cyclic boundaries
--------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
 
