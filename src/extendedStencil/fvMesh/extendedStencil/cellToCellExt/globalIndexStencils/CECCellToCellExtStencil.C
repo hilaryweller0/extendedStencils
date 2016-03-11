@@ -23,20 +23,19 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "CPCCellToCellExtStencil.H"
+#include "CECCellToCellExtStencil.H"
 #include "syncTools.H"
 #include "dummyTransform.H"
 #include "cellToFaceExtStencil.H"
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-// Calculates per point on coupled patch the pointCells
-// (with optional transformation added)
-void Foam::CPCCellToCellExtStencil::calcPointBoundaryData
+// Calculates per edge the neighbour data (= edgeCells)
+void Foam::CECCellToCellExtStencil::calcEdgeBoundaryData
 (
     const boolList& isValidBFace,
-    Map<labelList>& neiGlobal,
-    Map<labelPairList>& neiTrafoGlobal
+    EdgeMap<labelList>& neiGlobal,
+    EdgeMap<labelPairList>& neiTrafoGlobal
 ) const
 {
     const globalIndexAndTransform& globalTransforms =
@@ -45,7 +44,7 @@ void Foam::CPCCellToCellExtStencil::calcPointBoundaryData
     const polyBoundaryMesh& patches = mesh().boundaryMesh();
 
 
-    // Count number of points
+    // Count number of edges
 
     label nUntrafo = 0;
     label nTrafo = 0;
@@ -60,20 +59,21 @@ void Foam::CPCCellToCellExtStencil::calcPointBoundaryData
                 globalTransforms.patchTransformSign()[patchI];
             if (transSign.first() == nullIndex)
             {
-                nUntrafo += pp.nPoints();
+                nUntrafo += pp.nEdges();
             }
             else
             {
-                nTrafo += pp.nPoints();
+                nTrafo += pp.nEdges();
             }
         }
     }
 
-    // Size. Assume 4 cells per point
-    neiGlobal.resize(2*4*nUntrafo);
-    neiTrafoGlobal.resize(2*4*nTrafo);
 
-    labelHashSet pointGlobals;
+    // Size. Assume 2 cells per edge
+    neiGlobal.resize(2*2*nUntrafo);
+    neiTrafoGlobal.resize(2*2*nTrafo);
+
+    labelHashSet edgeGlobals;
 
     forAll(patches, patchI)
     {
@@ -81,28 +81,29 @@ void Foam::CPCCellToCellExtStencil::calcPointBoundaryData
 
         if (pp.coupled())
         {
-            const labelList& meshPoints = pp.meshPoints();
-
+            const labelList& meshEdges = pp.meshEdges();
             const labelPair& transSign =
                 globalTransforms.patchTransformSign()[patchI];
 
-            forAll(meshPoints, i)
+            forAll(meshEdges, i)
             {
-                label pointI = meshPoints[i];
-                // Calculate all local cells connected to the point
+                label edgeI = meshEdges[i];
+                const edge& e = mesh().edges()[edgeI];
+
+                // Calculate all local cells connected to the edge
                 labelList pCells
                 (
                     calcFaceCells
                     (
                         isValidBFace,
-                        mesh().pointFaces()[pointI],
-                        pointGlobals
+                        mesh().edgeFaces(edgeI),
+                        edgeGlobals
                     )
                 );
 
                 if (transSign.first() == nullIndex)
                 {
-                    neiGlobal.insert(pointI, pCells);
+                    neiGlobal.insert(e, pCells);
                 }
                 else
                 {
@@ -118,7 +119,7 @@ void Foam::CPCCellToCellExtStencil::calcPointBoundaryData
                             true        // Sending patch
                         )
                     );
-                    neiTrafoGlobal.insert(pointI, pTrafoCells);
+                    neiTrafoGlobal.insert(e, pTrafoCells);
                 }
             }
         }
@@ -129,7 +130,7 @@ void Foam::CPCCellToCellExtStencil::calcPointBoundaryData
         HashSet<label, Hash<label>> set;
         unionEqOp<label, Hash<label>> op(set);
 
-        syncTools::syncPointMap
+        syncTools::syncEdgeMap
         (
             mesh(),
             neiGlobal,
@@ -141,7 +142,7 @@ void Foam::CPCCellToCellExtStencil::calcPointBoundaryData
         HashSet<labelPair, labelPair::Hash<>> set;
         unionEqOp<labelPair, labelPair::Hash<>> op(set);
 
-        syncTools::syncPointMap
+        syncTools::syncEdgeMap
         (
             mesh(),
             neiTrafoGlobal,
@@ -154,15 +155,44 @@ void Foam::CPCCellToCellExtStencil::calcPointBoundaryData
 
 // Calculates per cell the neighbour data (= cell or boundary in global
 // numbering). First element is always cell itself!
-void Foam::CPCCellToCellExtStencil::calcCellStencil
+void Foam::CECCellToCellExtStencil::calcCellStencil
 (
     labelListList& globalCellCells,
     List<labelPairList>& globalTrafoCellCells
 ) const
 {
-    // Calculate points on coupled patches
-    const labelList& boundaryPoints =
-        mesh().globalData().coupledPatch().meshPoints();
+    // Calculate edges on coupled patches
+    const labelList boundaryEdges
+    (
+         mesh().globalData().coupledPatch().meshEdges
+        (
+            mesh().edges(),
+            mesh().pointEdges()
+        )
+    );
+
+    //{
+    //    OFstream str(mesh().time().path()/"boundaryEdges.obj");
+    //    Pout<< "DUmping boundary edges to " << str.name() << endl;
+    //
+    //    label vertI = 0;
+    //    forAll(boundaryEdges, i)
+    //    {
+    //        label edgeI = boundaryEdges[i];
+    //        const edge& e = mesh().edges()[edgeI];
+    //        const point& p0 = mesh().points()[e[0]];
+    //        const point& p1 = mesh().points()[e[1]];
+    //
+    //        Pout<< "boundary edge " << edgeI << " between " << p0 << p1
+    //            << endl;
+    //
+    //        meshTools::writeOBJ(str, p0);
+    //        vertI++;
+    //        meshTools::writeOBJ(str, p1);
+    //        vertI++;
+    //        str << "l " << vertI-1 << ' ' << vertI << nl;
+    //    }
+    //}
 
 
     // Mark boundary faces to be included in stencil (i.e. not coupled or empty)
@@ -174,45 +204,49 @@ void Foam::CPCCellToCellExtStencil::calcCellStencil
     globalTrafoCellCells.setSize(mesh().nCells());
 
 
-    // 1. Do local (untranformed) pointCells
+    // 1. Do local (untranformed) edgeCells
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     labelHashSet workSet;
 
-    for (label pointI = 0; pointI < mesh().nPoints(); pointI++)
+    for (label edgeI = 0; edgeI < mesh().nEdges(); edgeI++)
     {
-        labelList pGlobals
+        labelList eGlobals
         (
             calcFaceCells
             (
                 isValidBFace,
-                mesh().pointFaces()[pointI],
+                mesh().edgeFaces(edgeI),
                 workSet
             )
         );
 
-        const labelList& pCells = mesh().pointCells(pointI);
+        const labelList& eCells = mesh().edgeCells(edgeI);
 
-        forAll(pCells, j)
+        forAll(eCells, j)
         {
-            label cellI = pCells[j];
+            label cellI = eCells[j];
 
             merge
             (
                 globalNumbering().toGlobal(cellI),
-                pGlobals,
+                eGlobals,
                 globalCellCells[cellI]
             );
         }
     }
 
 
-    // 2. Swap pointCells for coupled points
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    Map<labelList> neiGlobal;
-    Map<labelPairList> neiTrafoGlobal;
-    calcPointBoundaryData
+    // 2. Swap edgeCells for coupled edges
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    // Swap edgeCells for coupled edges. Note: use EdgeMap for now since we've
+    // got syncTools::syncEdgeMap for those. Should be replaced with Map and
+    // syncTools functionality to handle those.
+    EdgeMap<labelList> neiGlobal;
+    EdgeMap<labelPairList> neiTrafoGlobal;
+    calcEdgeBoundaryData
     (
         isValidBFace,
         neiGlobal,
@@ -225,50 +259,49 @@ void Foam::CPCCellToCellExtStencil::calcCellStencil
 
     HashSet<labelPair, labelPair::Hash<> > trafoSet;
 
-    forAll(boundaryPoints, i)
+    forAll(boundaryEdges, i)
     {
-        label pointI = boundaryPoints[i];
-        const labelList& pCells = mesh().pointCells(pointI);
+        label edgeI = boundaryEdges[i];
+        const edge& e = mesh().edges()[edgeI];
+        const labelList& eCells = mesh().edgeCells(edgeI);
 
-        // Distribute neighbour data to all pointCells
-
-        Map<labelList>::const_iterator fnd = neiGlobal.find(pointI);
+        EdgeMap<labelList>::const_iterator fnd = neiGlobal.find(e);
         if (fnd != neiGlobal.end())
         {
-            const labelList& pGlobals = fnd();
+            const labelList& eGlobals = fnd();
 
-            forAll(pCells, j)
+            forAll(eCells, j)
             {
-                label cellI = pCells[j];
+                label cellI = eCells[j];
                 merge
                 (
                     globalNumbering().toGlobal(cellI),
-                    pGlobals,
+                    eGlobals,
                     globalCellCells[cellI]
                 );
             }
         }
 
-        Map<labelPairList>::const_iterator fnd2 =
-            neiTrafoGlobal.find(pointI);
+        EdgeMap<labelPairList>::const_iterator fnd2 =
+            neiTrafoGlobal.find(e);
         if (fnd2 != neiTrafoGlobal.end())
         {
-            const labelPairList& pGlobals = fnd2();
+            const labelPairList& eGlobals = fnd2();
 
-            forAll(pCells, j)
+            forAll(eCells, j)
             {
-                label cellI = pCells[j];
+                label cellI = eCells[j];
 
-                // Merge pGlobals into globalTrafoCellCells
+                // Merge eGlobals into globalTrafoCellCells
                 trafoSet.clear();
                 label sz = globalTrafoCellCells[cellI].size();
-                trafoSet.resize(2*(sz+pGlobals.size()));
+                trafoSet.resize(2*(sz+eGlobals.size()));
                 trafoSet.insert(globalTrafoCellCells[cellI]);
 
                 // Check that transformed are not present in untransformed bit
-                forAll(pGlobals, pI)
+                forAll(eGlobals, pI)
                 {
-                    const labelPair& lp = pGlobals[pI];
+                    const labelPair& lp = eGlobals[pI];
                     label index = globalIndexAndTransform::index(lp);
                     label procI = globalIndexAndTransform::processor(lp);
                     label globalI =
@@ -288,11 +321,11 @@ void Foam::CPCCellToCellExtStencil::calcCellStencil
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::CPCCellToCellExtStencil::CPCCellToCellExtStencil(const polyMesh& mesh)
+Foam::CECCellToCellExtStencil::CECCellToCellExtStencil(const polyMesh& mesh)
 :
     cellToCellExtStencil(mesh)
 {
-    // Calculate per cell the (point) connected cells (in global numbering)
+    // Calculate per cell the (edge) connected cells (in global numbering)
     calcCellStencil(untransformedElements_, transformedElements_);
 }
 

@@ -145,7 +145,7 @@ Foam::extendedCellToFaceExtStencil::weightedSum
             )
         )
     );
-    GeometricField<Type, fvsPatchField, surfaceMesh>& sf = tsfCorr();
+    GeometricField<Type, fvsPatchField, surfaceMesh>& sf = tsfCorr.ref();
 
     // Internal faces
     for (label faceI = 0; faceI < mesh.nInternalFaces(); faceI++)

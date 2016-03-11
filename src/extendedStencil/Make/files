@@ -7,6 +7,8 @@ $(cellToFaceExt)/extendedUpwindCellToFaceExtStencil.C
 globalIndexStencils = $(cellToFaceExt)/globalIndexStencils
 
 $(globalIndexStencils)/CPCCellToFaceExtStencil.C
+$(globalIndexStencils)/CECCellToFaceExtStencil.C
+$(globalIndexStencils)/CFCCellToFaceExtStencil.C
 $(globalIndexStencils)/cellToFaceExtStencil.C
 
 MeshObjects = $(cellToFaceExt)/MeshObjects
@@ -16,6 +18,8 @@ $(MeshObjects)/upwindCPCCellToFaceExtStencilObject.C
 cellToCellExt = fvMesh/extendedStencil/cellToCellExt
 $(cellToCellExt)/globalIndexStencils/cellToCellExtStencil.C
 $(cellToCellExt)/globalIndexStencils/CPCCellToCellExtStencil.C
+$(cellToCellExt)/globalIndexStencils/CECCellToCellExtStencil.C
+$(cellToCellExt)/globalIndexStencils/CFCCellToCellExtStencil.C
 
 schemes = interpolation/surfaceInterpolation/schemes
 

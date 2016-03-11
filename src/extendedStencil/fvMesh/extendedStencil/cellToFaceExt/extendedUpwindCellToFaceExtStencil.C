@@ -401,7 +401,6 @@ void Foam::extendedUpwindCellToFaceExtStencil::transportStencils
         neiBndStencil[bFaceI] = ownStencil[faceI];
         neiBndTrafoStencil[bFaceI] = ownTransformedElements[faceI];
     }
-    //syncTools::swapBoundaryFaceList(mesh_, neiBndStencil);
     syncTools::syncBoundaryFaceList
     (
         mesh_,

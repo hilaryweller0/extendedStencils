@@ -105,7 +105,7 @@ public:
             labelHashSet& workSet
         );
 
-        //- Helper: add transform
+        //- Helper: add transform to global cell labels
         static labelPairList transform
         (
             const polyMesh&,
@@ -114,6 +114,8 @@ public:
             const labelList& untrafoStencil,
             const bool sendPatch
         );
+
+        //- Helper: add transform to already transformed cells
         static labelPairList transform
         (
             const polyMesh&,

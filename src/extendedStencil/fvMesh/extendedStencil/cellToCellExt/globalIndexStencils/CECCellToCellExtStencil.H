@@ -22,22 +22,23 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::CPCCellToCellExtStencil
+    Foam::CECCellToCellExtStencil
 
 Description
 
 SourceFiles
-    CPCCellToCellExtStencil.C
+    CECCellToCellExtStencil.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef CPCCellToCellExtStencil_H
-#define CPCCellToCellExtStencil_H
+#ifndef CECCellToCellExtStencil_H
+#define CECCellToCellExtStencil_H
 
 #include "cellToCellExtStencil.H"
 #include "boolList.H"
 #include "HashSet.H"
 #include "Map.H"
+#include "EdgeMap.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -45,21 +46,21 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                    Class CPCCellToCellExtStencil Declaration
+                   Class CECCellToCellExtStencil Declaration
 \*---------------------------------------------------------------------------*/
 
-class CPCCellToCellExtStencil
+class CECCellToCellExtStencil
 :
     public cellToCellExtStencil
 {
     // Private Member Functions
 
-        //- Calculates per point the neighbour data (= pointCells)
-        void calcPointBoundaryData
+        //- Calculates per edge the neighbour data (= edgeCells)
+        void calcEdgeBoundaryData
         (
             const boolList& isValidBFace,
-            Map<labelList>& neiGlobal,
-            Map<labelPairList>& neiTrafoGlobal
+            EdgeMap<labelList>& neiGlobal,
+            EdgeMap<labelPairList>& neiTrafoGlobal
         ) const;
 
         void calcCellStencil(labelListList&, List<labelPairList>&) const;
@@ -70,7 +71,7 @@ public:
     // Constructors
 
         //- Construct from all cells and boundary faces
-        explicit CPCCellToCellExtStencil(const polyMesh&);
+        explicit CECCellToCellExtStencil(const polyMesh&);
 
 };
 

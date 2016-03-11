@@ -22,22 +22,19 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::CPCCellToCellExtStencil
+    Foam::CFCCellToCellExtStencil
 
 Description
 
 SourceFiles
-    CPCCellToCellExtStencil.C
+    CFCCellToCellExtStencil.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef CPCCellToCellExtStencil_H
-#define CPCCellToCellExtStencil_H
+#ifndef CFCCellToCellExtStencil_H
+#define CFCCellToCellExtStencil_H
 
 #include "cellToCellExtStencil.H"
-#include "boolList.H"
-#include "HashSet.H"
-#include "Map.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -45,23 +42,21 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                    Class CPCCellToCellExtStencil Declaration
+                    Class CFCCellToCellExtStencil Declaration
 \*---------------------------------------------------------------------------*/
 
-class CPCCellToCellExtStencil
+class CFCCellToCellExtStencil
 :
     public cellToCellExtStencil
 {
     // Private Member Functions
 
-        //- Calculates per point the neighbour data (= pointCells)
-        void calcPointBoundaryData
-        (
-            const boolList& isValidBFace,
-            Map<labelList>& neiGlobal,
-            Map<labelPairList>& neiTrafoGlobal
-        ) const;
+        //- Calculates per face the neighbour data (= cell or boundary face)
+        void calcFaceBoundaryData(labelList&, labelPairList&) const;
 
+        //- Calculates per cell the neighbour data
+        //  (= cell or boundary in global numbering).
+        //  First element is always cell itself!
         void calcCellStencil(labelListList&, List<labelPairList>&) const;
 
 
@@ -69,9 +64,8 @@ public:
 
     // Constructors
 
-        //- Construct from all cells and boundary faces
-        explicit CPCCellToCellExtStencil(const polyMesh&);
-
+        //- Construct from mesh
+        explicit CFCCellToCellExtStencil(const polyMesh& mesh);
 };
 
 
