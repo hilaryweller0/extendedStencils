@@ -42,7 +42,6 @@ void Foam::CFCCellToCellExtStencil::calcFaceBoundaryData
     const label nullIndex = globalTransforms.nullTransformIndex();
     const polyBoundaryMesh& patches = mesh().boundaryMesh();
     const label nBnd = mesh().nFaces()-mesh().nInternalFaces();
-    const labelList& own = mesh().faceOwner();
 
     neiGlobal.setSize(nBnd);
     neiGlobal = -1;
@@ -52,21 +51,27 @@ void Foam::CFCCellToCellExtStencil::calcFaceBoundaryData
     forAll(patches, patchI)
     {
         const polyPatch& pp = patches[patchI];
-        label faceI = pp.start();
 
         if (pp.coupled())
         {
             const labelPair& transSign =
                 globalTransforms.patchTransformSign()[patchI];
 
+            const labelUList& fc = pp.faceCells();
+
+            labelList globalCells(fc.size());
+            forAll(fc, i)
+            {
+                globalCells[i] = globalNumbering().toGlobal(fc[i]);
+            }
+
             if (transSign.first() == nullIndex)
             {
                 // Get owner cells (untransformed)
                 forAll(pp, i)
                 {
-                    label bFaceI = faceI-mesh().nInternalFaces();
-                    neiGlobal[bFaceI] = globalNumbering().toGlobal(own[faceI]);
-                    faceI++;
+                    label bFaceI = pp.start()+i-mesh().nInternalFaces();
+                    neiGlobal[bFaceI] = globalCells[i];
                 }
             }
             else
@@ -79,16 +84,15 @@ void Foam::CFCCellToCellExtStencil::calcFaceBoundaryData
                         mesh(),
                         patchI,
                         globalNumbering(),
-                        pp.faceCells(),
+                        globalCells,
                         true        // Sending patch
                     )
                 );
 
                 forAll(pp, i)
                 {
-                    label bFaceI = faceI-mesh().nInternalFaces();
+                    label bFaceI = pp.start()+i-mesh().nInternalFaces();
                     neiTrafoGlobal[bFaceI] = trafoCells[i];
-                    faceI++;
                 }
             }
         }
@@ -97,10 +101,9 @@ void Foam::CFCCellToCellExtStencil::calcFaceBoundaryData
             // For noncoupled faces get the boundary face.
             forAll(pp, i)
             {
-                label bFaceI = faceI-mesh().nInternalFaces();
+                label bFaceI = pp.start()+i-mesh().nInternalFaces();
                 neiGlobal[bFaceI] =
                     globalNumbering().toGlobal(mesh().nCells()+bFaceI);
-                faceI++;
             }
         }
     }
