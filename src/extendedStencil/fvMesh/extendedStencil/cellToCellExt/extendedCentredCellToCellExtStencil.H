@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2013-2016 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -22,18 +22,19 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::extendedCentredCellToFaceExtStencil
+    Foam::extendedCentredCellToCellExtStencil
 
 Description
 
 SourceFiles
-    extendedCentredCellToFaceExtStencil.C
+    extendedCentredCellToCellExtStencil.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef extendedCentredCellToFaceExtStencil_H
-#define extendedCentredCellToFaceExtStencil_H
+#ifndef extendedCentredCellToCellExtStencil_H
+#define extendedCentredCellToCellExtStencil_H
 
+#include "extendedCellToCellExtStencil.H"
 #include "extendedCellToFaceExtStencil.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -41,16 +42,15 @@ SourceFiles
 namespace Foam
 {
 
-class cellToFaceExtStencil;
-class mapDistribute;
+class cellToCellExtStencil;
 
 /*---------------------------------------------------------------------------*\
-              Class extendedCentredCellToFaceExtStencil Declaration
+              Class extendedCentredCellToCellExtStencil Declaration
 \*---------------------------------------------------------------------------*/
 
-class extendedCentredCellToFaceExtStencil
+class extendedCentredCellToCellExtStencil
 :
-    public extendedCellToFaceExtStencil
+    public extendedCellToCellExtStencil
 {
     // Private data
 
@@ -63,27 +63,25 @@ class extendedCentredCellToFaceExtStencil
         //- Swap map for getting neigbouring data
         autoPtr<mapDistribute> mapPtr_;
 
+
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
-        extendedCentredCellToFaceExtStencil
+        extendedCentredCellToCellExtStencil
         (
-            const extendedCentredCellToFaceExtStencil&
+            const extendedCentredCellToCellExtStencil&
         );
 
         //- Disallow default bitwise assignment
-        void operator=(const extendedCentredCellToFaceExtStencil&);
+        void operator=(const extendedCentredCellToCellExtStencil&);
 
 
 public:
 
     // Constructors
 
-        //- Construct from uncompacted face stencil
-        explicit extendedCentredCellToFaceExtStencil
-        (
-            const cellToFaceExtStencil&
-        );
+        //- Construct from uncompacted cell stencil
+        explicit extendedCentredCellToCellExtStencil(const cellToCellExtStencil&);
 
 
     // Member Functions

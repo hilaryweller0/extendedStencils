@@ -16,10 +16,15 @@ $(MeshObjects)/centredCPCCellToFaceExtStencilObject.C
 $(MeshObjects)/upwindCPCCellToFaceExtStencilObject.C
 
 cellToCellExt = fvMesh/extendedStencil/cellToCellExt
+$(cellToCellExt)/extendedCentredCellToCellExtStencil.C
+$(cellToCellExt)/extendedCellToCellExtStencil.C
 $(cellToCellExt)/globalIndexStencils/cellToCellExtStencil.C
 $(cellToCellExt)/globalIndexStencils/CPCCellToCellExtStencil.C
 $(cellToCellExt)/globalIndexStencils/CECCellToCellExtStencil.C
 $(cellToCellExt)/globalIndexStencils/CFCCellToCellExtStencil.C
+$(cellToCellExt)/MeshObjects/centredCECCellToCellExtStencilObject.C
+$(cellToCellExt)/MeshObjects/centredCFCCellToCellExtStencilObject.C
+$(cellToCellExt)/MeshObjects/centredCPCCellToCellExtStencilObject.C
 
 schemes = interpolation/surfaceInterpolation/schemes
 
